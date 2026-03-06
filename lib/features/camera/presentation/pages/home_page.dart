@@ -1,10 +1,10 @@
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/utils/light_calculator.dart';
 import '../../../calibration/data/calibration_repository.dart';
 import '../../../history/data/measurement_repository.dart';
 import '../../domain/models/measurement.dart';
@@ -25,8 +25,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   double _cct = 6500;
   double _calibrationFactor = 1.0;
   bool _autoRecord = true;
-  List<double> _luxHistory = [];
-  List<double> _cctHistory = [];
+  final List<double> _luxHistory = [];
+  final List<double> _cctHistory = [];
 
   @override
   void initState() {
@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         frontCamera,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup: ImageFormatGroup.yuv420,
       );
 
       await _cameraController!.initialize();
@@ -91,38 +91,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_cameraController == null || !_cameraController!.value.isInitialized) return;
 
     _cameraController!.startImageStream((image) {
-      // 处理摄像头帧数据
       _processImage(image);
     });
   }
 
   void _processImage(CameraImage image) {
     try {
-      // 将 YUV 转换为 RGBA (简化处理)
-      final bytes = _convertYUVToRGBA(image);
-
+      // 直接从 Y 平面计算亮度（YUV420 格式，Y 平面是第一个）
+      final yPlane = image.planes[0];
+      final yBytes = yPlane.bytes;
+      
+      // 计算平均亮度
+      int totalY = 0;
+      final int length = yBytes.length;
+      
+      // 采样计算（每隔 4 个像素）
+      int sampleCount = 0;
+      for (int i = 0; i < length; i += 4) {
+        totalY += yBytes[i] & 0xFF;
+        sampleCount++;
+      }
+      
+      if (sampleCount == 0) return;
+      
+      final avgY = totalY / sampleCount;
+      
       // 计算 Lux
-      final newLux = LightCalculator.calculateLux(
-        bytes,
-        _calibrationFactor,
-        1.0,
-      );
-
+      double newLux = _mapYToLux(avgY);
+      newLux *= _calibrationFactor;
+      
       // 计算 CCT
-      final newCct = LightCalculator.calculateCCT(bytes);
-
+      double newCct = _calculateCCT(image);
+      
       // 平滑处理
       _luxHistory.add(newLux);
       _cctHistory.add(newCct);
-
+      
       if (_luxHistory.length > AppConstants.smoothingWindowSize) {
         _luxHistory.removeAt(0);
         _cctHistory.removeAt(0);
       }
-
+      
       final smoothedLux = _luxHistory.reduce((a, b) => a + b) / _luxHistory.length;
       final smoothedCct = _cctHistory.reduce((a, b) => a + b) / _cctHistory.length;
-
+      
       if (mounted) {
         setState(() {
           _lux = smoothedLux;
@@ -130,44 +142,90 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         });
       }
     } catch (e) {
-      // 忽略处理错误
+      debugPrint('图像处理错误: $e');
     }
   }
 
-  Uint8List? _convertYUVToRGBA(CameraImage image) {
-    // 简化的 YUV 到 RGBA 转换
-    // 实际应用中需要更精确的转换
+  /// 将 Y 值映射到 Lux
+  double _mapYToLux(double y) {
+    if (y <= 0) return 0;
+    
+    // Y 值范围: 0-255 (黑色到白色)
+    // 使用非线性映射扩展动态范围
+    
+    final normalizedY = y / 255.0;
+    
+    // 使用幂函数映射
+    // 低光区域更敏感，高光区域压缩
+    double lux;
+    if (normalizedY < 0.05) {
+      // 非常暗：0-50 Lux
+      lux = normalizedY * 1000;
+    } else if (normalizedY < 0.2) {
+      // 暗：50-500 Lux
+      lux = 50 + (normalizedY - 0.05) * 3000;
+    } else if (normalizedY < 0.6) {
+      // 中等：500-3000 Lux
+      lux = 500 + (normalizedY - 0.2) * 6250;
+    } else {
+      // 亮：3000-100000 Lux
+      lux = 3000 + math.pow((normalizedY - 0.6) * 2.5, 2) * 11200;
+    }
+    
+    return lux.clamp(0, 100000);
+  }
+
+  /// 从 YUV 数据计算 CCT
+  double _calculateCCT(CameraImage image) {
     try {
-      final int width = image.width;
-      final int height = image.height;
-      final int uvRowStride = image.planes[1].bytesPerRow;
-      final int uvPixelStride = image.planes[1].bytesPerPixel ?? 1;
-
-      final rgba = Uint8List(width * height * 4);
-
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          final int uvIndex = uvPixelStride * (x ~/ 2) + uvRowStride * (y ~/ 2);
-          final int index = y * width + x;
-
-          final yp = image.planes[0].bytes[index];
-          final up = image.planes[1].bytes[uvIndex];
-          final vp = image.planes[2].bytes[uvIndex];
-
-          int r = (yp + vp * 1.370705).round().clamp(0, 255);
-          int g = (yp - up * 0.337633 - vp * 0.698001).round().clamp(0, 255);
-          int b = (yp + up * 1.732446).round().clamp(0, 255);
-
-          rgba[index * 4] = r;
-          rgba[index * 4 + 1] = g;
-          rgba[index * 4 + 2] = b;
-          rgba[index * 4 + 3] = 255;
-        }
+      // YUV420 格式：U 和 V 平面是交错的
+      final uPlane = image.planes[1];
+      final vPlane = image.planes[2];
+      
+      final uBytes = uPlane.bytes;
+      final vBytes = vPlane.bytes;
+      
+      // 计算平均 UV
+      int totalU = 0;
+      int totalV = 0;
+      int sampleCount = 0;
+      
+      final int minLength = math.min(uBytes.length, vBytes.length);
+      
+      for (int i = 0; i < minLength; i += 8) {
+        totalU += uBytes[i] & 0xFF;
+        totalV += vBytes[i] & 0xFF;
+        sampleCount++;
       }
-
-      return rgba;
+      
+      if (sampleCount == 0) return 6500;
+      
+      // UV 值中心是 128
+      final avgU = (totalU / sampleCount) - 128;
+      final avgV = (totalV / sampleCount) - 128;
+      
+      // 根据色度估算色温
+      // V 偏高 -> 偏红（低色温，暖光）
+      // U 偏高 -> 偏蓝（高色温，冷光）
+      
+      final colorRatio = avgV - avgU * 0.5;
+      
+      double cct;
+      if (colorRatio > 30) {
+        cct = 2700; // 暖光（白炽灯）
+      } else if (colorRatio > 10) {
+        cct = 3500; // 暖白光
+      } else if (colorRatio > -10) {
+        cct = 5000; // 中性光
+      } else if (colorRatio > -30) {
+        cct = 6000; // 日光
+      } else {
+        cct = 7500; // 冷光
+      }
+      
+      return cct.clamp(2000, 10000);
     } catch (e) {
-      return null;
+      return 6500;
     }
   }
 
@@ -331,9 +389,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildOverlayItem('🌞', _lux.toStringAsFixed(0), 'Lux', '理想'),
+            _buildOverlayItem('🌞', _lux.toStringAsFixed(0), 'Lux', _getLuxStatusText()),
             Container(width: 1, height: 40, color: Colors.grey[300]),
-            _buildOverlayItem('🌡️', _cct.toStringAsFixed(0), 'K', '日光'),
+            _buildOverlayItem('🌡️', _cct.toStringAsFixed(0), 'K', _getCCTStatusText()),
           ],
         ),
       ),
@@ -363,9 +421,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         const SizedBox(height: 4),
         Text(
           '● $status',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppTheme.ideal,
+            color: _getLuxStatus() == LightStatus.ideal ? AppTheme.ideal : AppTheme.warning,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -493,7 +551,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String _getLuxStatusText() {
     switch (_getLuxStatus()) {
       case LightStatus.ideal:
-        return '理想范围';
+        return '理想';
       case LightStatus.low:
         return '偏低';
       case LightStatus.high:
