@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../calibration/data/calibration_repository.dart';
@@ -30,10 +29,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   
   // 摄像头选择
   bool _useFrontCamera = true;
-  
-  // 屏幕亮度
-  double _originalBrightness = 0.5;
-  bool _isMeasuring = false;
 
   @override
   void initState() {
@@ -47,7 +42,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
-    _restoreScreenBrightness();
     super.dispose();
   }
 
@@ -57,30 +51,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (controller == null || !controller.value.isInitialized) return;
 
     if (state == AppLifecycleState.inactive) {
-      _restoreScreenBrightness();
       controller.dispose();
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
-    }
-  }
-
-  /// 降低屏幕亮度以减少反光影响
-  Future<void> _dimScreen() async {
-    try {
-      // 保存当前亮度
-      // 注意：需要 screen_brightness 插件，这里使用简化方案
-      // 实际应用中建议添加该插件
-    } catch (e) {
-      debugPrint('无法调整屏幕亮度: $e');
-    }
-  }
-
-  /// 恢复屏幕亮度
-  Future<void> _restoreScreenBrightness() async {
-    try {
-      // 恢复亮度
-    } catch (e) {
-      debugPrint('无法恢复屏幕亮度: $e');
     }
   }
 
