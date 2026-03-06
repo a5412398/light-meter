@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Sun icon -->
+    <group android:translateX="27" android:translateY="27">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M27,14c-7.18,0 -13,5.82 -13,13s5.82,13 13,13 13,-5.82 13,-13 -5.82,-13 -13,-13zM27,36c-4.97,0 -9,-4.03 -9,-9s4.03,-9 9,-9 9,4.03 9,9 -4.03,9 -9,9z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M27,6l-1.5,4.5L27,11l1.5,-0.5L27,6z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M27,48l1.5,-4.5L27,43l-1.5,0.5L27,48z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M48,27l-4.5,-1.5L43,27l0.5,1.5L48,27z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M6,27l4.5,1.5L11,27l-0.5,-1.5L6,27z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40.97,13.03l-3.18,3.18 1.06,1.06 3.18,-3.18z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M13.03,40.97l3.18,-3.18 -1.06,-1.06 -3.18,3.18z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40.97,40.97l-3.18,-3.18 -1.06,1.06 3.18,3.18z"/>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M13.03,13.03l3.18,3.18 1.06,-1.06 -3.18,-3.18z"/>
+    </group>
+</vector>
