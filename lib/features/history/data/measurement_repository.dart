@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import '../../camera/domain/models/measurement.dart';
 import '../../../core/database/database_helper.dart';
 
