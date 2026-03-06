@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,6 @@ import '../../../calibration/data/calibration_repository.dart';
 import '../../../history/data/measurement_repository.dart';
 import '../../domain/models/measurement.dart';
 import '../widgets/param_card.dart';
-import '../widgets/camera_preview_widget.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 
 class HomePage extends StatefulWidget {

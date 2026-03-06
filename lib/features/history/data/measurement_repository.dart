@@ -1,4 +1,4 @@
-import '../domain/models/measurement.dart';
+import '../../camera/domain/models/measurement.dart';
 import '../../../core/database/database_helper.dart';
 
 /// 测量记录仓库
