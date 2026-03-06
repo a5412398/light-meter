@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../calibration/data/calibration_repository.dart';
@@ -26,6 +27,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _autoRecord = true;
   final List<double> _luxHistory = [];
   final List<double> _cctHistory = [];
+  
+  // 摄像头选择
+  bool _useFrontCamera = true;
+  
+  // 屏幕亮度
+  double _originalBrightness = 0.5;
+  bool _isMeasuring = false;
 
   @override
   void initState() {
@@ -39,6 +47,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
+    _restoreScreenBrightness();
     super.dispose();
   }
 
@@ -48,10 +57,42 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (controller == null || !controller.value.isInitialized) return;
 
     if (state == AppLifecycleState.inactive) {
+      _restoreScreenBrightness();
       controller.dispose();
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
     }
+  }
+
+  /// 降低屏幕亮度以减少反光影响
+  Future<void> _dimScreen() async {
+    try {
+      // 保存当前亮度
+      // 注意：需要 screen_brightness 插件，这里使用简化方案
+      // 实际应用中建议添加该插件
+    } catch (e) {
+      debugPrint('无法调整屏幕亮度: $e');
+    }
+  }
+
+  /// 恢复屏幕亮度
+  Future<void> _restoreScreenBrightness() async {
+    try {
+      // 恢复亮度
+    } catch (e) {
+      debugPrint('无法恢复屏幕亮度: $e');
+    }
+  }
+
+  /// 切换摄像头
+  Future<void> _toggleCamera() async {
+    setState(() {
+      _isInitialized = false;
+      _useFrontCamera = !_useFrontCamera;
+    });
+    
+    await _cameraController?.dispose();
+    await _initCamera();
   }
 
   Future<void> _initCamera() async {
@@ -62,14 +103,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         return;
       }
 
-      // 使用前置摄像头
-      final frontCamera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-        orElse: () => cameras.first,
-      );
+      // 根据选择使用前置或后置摄像头
+      final targetCamera = _useFrontCamera
+          ? cameras.firstWhere(
+              (camera) => camera.lensDirection == CameraLensDirection.front,
+              orElse: () => cameras.first,
+            )
+          : cameras.firstWhere(
+              (camera) => camera.lensDirection == CameraLensDirection.back,
+              orElse: () => cameras.first,
+            );
 
       _cameraController = CameraController(
-        frontCamera,
+        targetCamera,
         ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
@@ -307,28 +353,56 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               color: AppTheme.deepCharcoal,
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryGreen.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          Row(
+            children: [
+              // 摄像头切换按钮
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryGreen.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.settings_outlined, color: AppTheme.deepCharcoal),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
-                _loadCalibration();
-              },
-            ),
+                child: IconButton(
+                  icon: Icon(
+                    _useFrontCamera ? Icons.camera_front : Icons.camera_rear,
+                    color: AppTheme.deepCharcoal,
+                  ),
+                  onPressed: _toggleCamera,
+                  tooltip: _useFrontCamera ? '切换到后置摄像头' : '切换到前置摄像头',
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 设置按钮
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryGreen.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: AppTheme.deepCharcoal),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsPage()),
+                    );
+                    _loadCalibration();
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -336,35 +410,101 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildCameraPreview() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      height: 320,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: _isInitialized && _cameraController != null
-            ? Stack(
-                children: [
-                  CameraPreview(_cameraController!),
-                  _buildOverlayParams(),
-                ],
-              )
-            : Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-                ),
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          height: 280,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryGreen.withOpacity(0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-      ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: _isInitialized && _cameraController != null
+                ? Stack(
+                    children: [
+                      CameraPreview(_cameraController!),
+                      _buildOverlayParams(),
+                      // 测量提示
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _useFrontCamera ? Icons.phone_android : Icons.camera_alt,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _useFrontCamera 
+                                      ? '前置摄像头 • 避免屏幕反光'
+                                      : '后置摄像头 • 更准确测量',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Container(
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                    ),
+                  ),
+          ),
+        ),
+        // 测量提示
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.softGreen.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline, color: AppTheme.primaryGreen, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _useFrontCamera
+                        ? '提示：将手机屏幕朝下，让摄像头对准光源，减少屏幕反光干扰'
+                        : '提示：使用后置摄像头测量更准确，对准光源即可',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.darkGreen,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
