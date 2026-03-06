@@ -1,0 +1,36 @@
+name: light_meter
+description: 智能光线感应工具 - 专业级光照监测应用
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 状态管理
+  provider: ^6.1.1
+  
+  # 摄像头
+  camera: ^0.10.5+9
+  
+  # 数据库
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  
+  # 权限管理
+  permission_handler: ^11.1.0
+  
+  # 工具库
+  intl: ^0.18.1
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true

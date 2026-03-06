@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Meter - UI 设计预览</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Primary Colors */
+            --primary-green: #2E7D32;
+            --light-green: #66BB6A;
+            --soft-green: #A5D6A7;
+            --dark-green: #1B5E20;
+            
+            /* Accent Colors */
+            --warm-amber: #FF8F00;
+            --soft-white: #FAFAFA;
+            --earth-brown: #5D4037;
+            --deep-charcoal: #263238;
+            
+            /* Status Colors */
+            --ideal: #43A047;
+            --warning: #FFA726;
+            --error: #EF5350;
+            
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #F1F8E9 100%);
+            --gradient-accent: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(46, 125, 50, 0.08);
+            --shadow-md: 0 4px 16px rgba(46, 125, 50, 0.12);
+            --shadow-lg: 0 8px 24px rgba(46, 125, 50, 0.16);
+            
+            /* Typography */
+            --font-primary: 'DM Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-primary);
+            background: var(--gradient-primary);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: var(--soft-white);
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+        
+        /* Page Container */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        
+        .page.hidden {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .page.slide-left {
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            height: 44px;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--deep-charcoal);
+        }
+        
+        .status-bar .time {
+            font-weight: 600;
+        }
+        
+        .status-bar .icons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        
+        /* App Bar */
+        .app-bar {
+            height: 56px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: transparent;
+        }
+        
+        .app-bar h1 {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--deep-charcoal);
+        }
+        
+        .app-bar .back-btn,
+        .app-bar .settings-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            font-size: 18px;
+        }
+        
+        .app-bar .back-btn:hover,
+        .app-bar .settings-btn:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        
+        .app-bar .back-btn:focus,
+        .app-bar .settings-btn:focus {
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+        }
+        
+        /* Camera Preview */
+        .camera-preview {
+            margin: 0 16px;
+            height: 320px;
+            background: linear-gradient(135deg, #2C3E50 0%, #4CA1AF 100%);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .camera-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+        }
+        
+        /* Overlay Parameters */
+        .overlay-params {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .overlay-param {
+            text-align: center;
+        }
+        
+        .overlay-param .icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .overlay-param .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--deep-charcoal);
+        }
+        
+        .overlay-param .unit {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--earth-brown);
+        }
+        
+        .overlay-param .status {
+            font-size: 12px;
+            color: var(--ideal);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        /* Parameter Cards */
+        .param-cards {
+            display: flex;
+            gap: 12px;
+            margin: 20px 16px;
+        }
+        
+        .param-card {
+            flex: 1;
+            background: var(--gradient-card);
+            border-radius: 20px;
+            padding: 20px 16px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(46, 125, 50, 0.08);
+        }
+        
+        .param-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .param-card:focus {
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+        }
+        
+        .param-card .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .param-card .card-icon {
+            font-size: 24px;
+        }
+        
+        .param-card .card-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--earth-brown);
+        }
+        
+        .param-card .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--deep-charcoal);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        
+        .param-card .card-unit {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--earth-brown);
+            margin-bottom: 8px;
+        }
+        
+        .param-card .card-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .param-card .card-status.ideal {
+            background: rgba(67, 160, 71, 0.12);
+            color: var(--ideal);
+        }
+        
+        .param-card .card-status.warning {
+            background: rgba(255, 167, 38, 0.12);
+            color: var(--warning);
+        }
+        
+        .param-card .card-status .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        /* Bottom Section */
+        .bottom-section {
+            margin: 20px 16px;
+        }
+        
+        .info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .info-row:hover {
+            box-shadow: var(--shadow-md);
+        }
+        
+        .info-row:focus {
+            outline: 2px solid var(--primary-green);
+            outline-offset: 2px;
+        }
+        
+        .info-row .left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .info-row .icon {
+            font-size: 20px;
+        }
+        
+        .info-row .label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--deep-charcoal);
+        }
+        
+        .info-row .value {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--primary-green);
+            font-weight: 500;
+        }
+        
+        .info-row .arrow {
+            color: var(--earth-brown);
+            opacity: 0.5;
+        }
+        
+        /* Home Indicator */
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+            height: 5px;
+            background: var(--deep-charcoal);
+            border-radius: 3px;
+            opacity: 0.2;
+        }
+        
+        /* ==================== Settings Page ==================== */
+        .settings-content {
+            padding: 0 16px;
+            height: calc(100% - 100px);
+            overflow-y: auto;
+        }
+        
+        .settings-section {
+            margin-bottom: 24px;
+        }
+        
+        .settings-section-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--earth-brown);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-left: 4px;
+        }
+        
+        .settings-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-item:hover {
+            background: rgba(46, 125, 50, 0.04);
+        }
+        
+        .settings-item .left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .settings-item .icon {
+            font-size: 20px;
+            width: 32px;
+            text-align: center;
+        }
+        
+        .settings-item .text {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .settings-item .title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--deep-charcoal);
+        }
+        
+        .settings-item .subtitle {
+            font-size: 12px;
+            color: var(--earth-brown);
+            margin-top: 2px;
+        }
+        
+        .settings-item .value {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--primary-green);
+            font-weight: 500;
+        }
+        
+        /* Toggle Switch */
+        .toggle {
+            width: 48px;
+            height: 28px;
+            background: #E0E0E0;
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .toggle.active {
+            background: var(--primary-green);
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle.active::after {
+            transform: translateX(20px);
+        }
+        
+        /* Slider */
+        .slider-container {
+            padding: 16px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        
+        .slider-label span {
+            font-size: 14px;
+            color: var(--deep-charcoal);
+        }
+        
+        .slider-label .value {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--primary-green);
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--soft-green), var(--primary-green), var(--warm-amber));
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .slider-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: var(--shadow-md);
+            cursor: grab;
+        }
+        
+        .slider-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--earth-brown);
+            font-family: var(--font-mono);
+        }
+        
+        /* Dropdown */
+        .dropdown {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(46, 125, 50, 0.08);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .dropdown span {
+            font-size: 14px;
+            color: var(--deep-charcoal);
+        }
+        
+        .dropdown .arrow {
+            font-size: 12px;
+            color: var(--earth-brown);
+        }
+        
+        /* Danger Zone */
+        .danger-item {
+            color: var(--error);
+        }
+        
+        .danger-item .title {
+            color: var(--error);
+        }
+        
+        /* Version Info */
+        .version-info {
+            text-align: center;
+            padding: 24px;
+            color: var(--earth-brown);
+            font-size: 12px;
+        }
+        
+        .version-info .app-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--deep-charcoal);
+            margin-bottom: 4px;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        
+        .param-card .card-value {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .param-card {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        .param-card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            .param-card .card-value {
+                animation: none;
+            }
+            .param-card {
+                animation: none;
+            }
+            .page {
+                transition: opacity 0.2s ease;
+            }
+            .page.hidden {
+                transform: none;
+            }
+            .page.slide-left {
+                transform: none;
+            }
+            * {
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 400px) {
+            body {
+                padding: 0;
+            }
+            .phone-frame {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <!-- ==================== Main Page ==================== -->
+        <div class="page" id="mainPage">
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span class="time">9:41</span>
+                <div class="icons">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            
+            <!-- App Bar -->
+            <div class="app-bar">
+                <h1>Light Meter</h1>
+                <button class="settings-btn" aria-label="打开设置" onclick="showSettings()">
+                    <span aria-hidden="true">⚙️</span>
+                </button>
+            </div>
+            
+            <!-- Camera Preview -->
+            <div class="camera-preview">
+                <!-- Overlay Parameters -->
+                <div class="overlay-params">
+                    <div class="overlay-param">
+                        <div class="icon">🌞</div>
+                        <div class="value">1,234</div>
+                        <div class="unit">Lux</div>
+                        <div class="status">● 理想</div>
+                    </div>
+                    <div class="overlay-param">
+                        <div class="icon">🌡️</div>
+                        <div class="value">5,600</div>
+                        <div class="unit">K</div>
+                        <div class="status">● 日光</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Parameter Cards -->
+            <div class="param-cards">
+                <div class="param-card" tabindex="0" role="button" aria-label="亮度详情">
+                    <div class="card-header">
+                        <span class="card-icon" aria-hidden="true">🌞</span>
+                        <span class="card-title">亮度</span>
+                    </div>
+                    <div class="card-value">1,234</div>
+                    <div class="card-unit">Lux</div>
+                    <div class="card-status ideal">
+                        <span class="dot"></span>
+                        理想范围
+                    </div>
+                </div>
+                
+                <div class="param-card" tabindex="0" role="button" aria-label="色温详情">
+                    <div class="card-header">
+                        <span class="card-icon" aria-hidden="true">🌡️</span>
+                        <span class="card-title">色温</span>
+                    </div>
+                    <div class="card-value">5,600</div>
+                    <div class="card-unit">K</div>
+                    <div class="card-status ideal">
+                        <span class="dot"></span>
+                        日光色
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Section -->
+            <div class="bottom-section">
+                <div class="info-row" tabindex="0" role="button" aria-label="调整校准系数">
+                    <div class="left">
+                        <span class="icon" aria-hidden="true">📊</span>
+                        <span class="label">校准系数</span>
+                    </div>
+                    <div class="value">1.05x →</div>
+                </div>
+                
+                <div class="info-row" tabindex="0" role="button" aria-label="查看历史记录">
+                    <div class="left">
+                        <span class="icon" aria-hidden="true">📅</span>
+                        <span class="label">历史记录</span>
+                    </div>
+                    <div class="value">3 条 →</div>
+                </div>
+            </div>
+            
+            <!-- Home Indicator -->
+            <div class="home-indicator"></div>
+        </div>
+        
+        <!-- ==================== Settings Page ==================== -->
+        <div class="page hidden" id="settingsPage">
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span class="time">9:41</span>
+                <div class="icons">
+                    <span>📶</span>
+                    <span>🔋</span>
+                </div>
+            </div>
+            
+            <!-- App Bar -->
+            <div class="app-bar">
+                <button class="back-btn" aria-label="返回" onclick="hideSettings()">
+                    <span aria-hidden="true">←</span>
+                </button>
+                <h1>设置</h1>
+                <div style="width: 40px;"></div>
+            </div>
+            
+            <!-- Settings Content -->
+            <div class="settings-content">
+                <!-- Measurement Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">测量设置</div>
+                    <div class="settings-card">
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">📏</span>
+                                <div class="text">
+                                    <span class="title">默认单位</span>
+                                    <span class="subtitle">光照强度显示单位</span>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <span>Lux</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">🔄</span>
+                                <div class="text">
+                                    <span class="title">自动记录</span>
+                                    <span class="subtitle">测量时自动保存数据</span>
+                                </div>
+                            </div>
+                            <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">⏱️</span>
+                                <div class="text">
+                                    <span class="title">采样间隔</span>
+                                    <span class="subtitle">数据更新频率</span>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <span>500ms</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calibration Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">校准设置</div>
+                    <div class="settings-card">
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span>校准系数</span>
+                                <span class="value">1.05x</span>
+                            </div>
+                            <div class="slider">
+                                <div class="slider-thumb" style="left: 55%;"></div>
+                            </div>
+                            <div class="slider-marks">
+                                <span>0.5x</span>
+                                <span>1.0x</span>
+                                <span>1.5x</span>
+                                <span>2.0x</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">🎯</span>
+                                <div class="text">
+                                    <span class="title">参照校准</span>
+                                    <span class="subtitle">使用专业照度计校准</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">💾</span>
+                                <div class="text">
+                                    <span class="title">校准配置</span>
+                                    <span class="subtitle">管理已保存的校准方案</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">数据管理</div>
+                    <div class="settings-card">
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">📅</span>
+                                <div class="text">
+                                    <span class="title">数据保留</span>
+                                    <span class="subtitle">自动清理旧数据</span>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <span>30 天</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">📤</span>
+                                <div class="text">
+                                    <span class="title">导出数据</span>
+                                    <span class="subtitle">导出为 CSV 文件</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                        
+                        <div class="settings-item danger-item">
+                            <div class="left">
+                                <span class="icon">🗑️</span>
+                                <div class="text">
+                                    <span class="title">清除所有数据</span>
+                                    <span class="subtitle">删除所有历史记录</span>
+                                </div>
+                            </div>
+                            <span>→</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- About Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">关于</div>
+                    <div class="settings-card">
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">ℹ️</span>
+                                <div class="text">
+                                    <span class="title">使用指南</span>
+                                    <span class="subtitle">如何正确使用本应用</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">⭐</span>
+                                <div class="text">
+                                    <span class="title">评价应用</span>
+                                    <span class="subtitle">在应用商店给我们评分</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                        
+                        <div class="settings-item">
+                            <div class="left">
+                                <span class="icon">📧</span>
+                                <div class="text">
+                                    <span class="title">反馈问题</span>
+                                    <span class="subtitle">报告 Bug 或提出建议</span>
+                                </div>
+                            </div>
+                            <span style="color: var(--earth-brown);">→</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Version Info -->
+                <div class="version-info">
+                    <div class="app-name">Light Meter</div>
+                    <div>版本 1.0.0</div>
+                    <div style="margin-top: 8px;">© 2026 Light Meter Team</div>
+                </div>
+            </div>
+            
+            <!-- Home Indicator -->
+            <div class="home-indicator"></div>
+        </div>
+    </div>
+    
+    <script>
+        function showSettings() {
+            document.getElementById('mainPage').classList.add('slide-left');
+            document.getElementById('settingsPage').classList.remove('hidden');
+        }
+        
+        function hideSettings() {
+            document.getElementById('mainPage').classList.remove('slide-left');
+            document.getElementById('settingsPage').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
